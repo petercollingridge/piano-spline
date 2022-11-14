@@ -1,0 +1,95 @@
+#spline-chart {
+  border: 1px solid black;
+}
+
+#spline-chart .axis {
+  fill: none;
+  stroke: black;
+  stroke-width: 1;
+}
+
+#spline-chart text {
+  user-select: none;
+}
+
+#spline-chart .gridlines line {
+  stroke: #444;
+  stroke-width: 1;
+  stroke-dasharray: 1 5;
+}
+
+#spline-chart .grid-tick line {
+  stroke: black;
+  stroke-width: 1;
+}
+
+#spline-chart .axis-lower text {
+  text-anchor: middle;
+  alignment-baseline: hanging;
+}
+
+#spline-chart .axis-left text {
+  text-anchor: end;
+  alignment-baseline: central;
+}
+
+#spline-chart .axis-right text {
+  text-anchor: start;
+  alignment-baseline: central;
+}
+
+#spline-chart .input-points path {
+  fill: none;
+  stroke: red;
+  stroke-width: 1;
+}
+
+#spline-chart .spline-points circle {
+  fill: rgb(90, 100, 240);
+  opacity: 0.7;
+  /* transition: 200ms; */
+}
+
+#spline-chart .spline-points circle:hover,
+#spline-chart .spline-points circle.active {
+  stroke: rgb(90, 100, 240);
+  stroke-width: 2;
+  opacity: 1;
+  cursor: pointer;
+}
+
+#spline-chart .spline {
+  stroke: rgb(90, 100, 240);
+  stroke-width: 2;
+  fill: none;
+}
+
+.wrapper {
+  display: flex;
+}
+
+#note-wrapper {
+  min-width: 200px;
+  height: 445px;
+  overflow-x: scroll;
+  background-color: #f8f8f8;
+  margin-left: 1rem;
+  padding: 0.5rem;
+  line-height: 1.5rem;
+  box-sizing: border-box;
+}
+
+.spline-table {
+  border-collapse: collapse;
+  text-align: center;
+}
+
+.spline-table th {
+  padding: 0.15rem 0.7rem;
+  border-bottom: 1px solid #444;
+}
+
+.spline-table td.editable:hover {
+  color: blue;
+  background-color: white;
+}
