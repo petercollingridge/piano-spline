@@ -257,13 +257,13 @@ function createChart(id) {
   }
 
   // Adding measured points
-
   const inputGroup = addSVGElement(svg, 'g', { class: 'input-points' });
 
   function addPoint(x, y) {
     const px = getX(x);
     const py = getY(y);
     const d = `M${px - 3} ${py - 3}l7 7m0-7l-7 7`;
+
     if (points[x]) {
       points[x].setAttribute('d', d);
     } else {
@@ -275,7 +275,7 @@ function createChart(id) {
   const splineLine = addSVGElement(svg, 'path', { class: 'spline' });
 
   // Create draggable points
-  let selectedIndex = false;
+  let dragBoundary = false;
   let selectedPoint = false;
   let selectedSplinePoint = false;
   let offsetX;
@@ -304,8 +304,8 @@ function createChart(id) {
       } else {
         // Limit horizontal point movement to between its neighbours
         dragBoundary = [
-          SPLINE_POINTS[index - 1][0] + 3,
-          SPLINE_POINTS[index + 1][0] - 3,
+          SPLINE_POINTS[index - 1][0] + GRID_X,
+          SPLINE_POINTS[index + 1][0] - GRID_X,
         ];
       }
       selectedPoint = draggablePoint;
