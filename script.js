@@ -191,7 +191,8 @@ function createChart(id) {
   const GRID_X = 30;
   const GRID_Y = 30;
   const TICK_SIZE = 4;
-  const POINT_R = 4;
+  const points = {};
+
   const SPLINE_POINTS = [
     [1, 11.5],
     [22, 11.1],
@@ -262,8 +263,12 @@ function createChart(id) {
   function addPoint(x, y) {
     const px = getX(x);
     const py = getY(y);
-    const d = `M${px - 3} ${py - 3}l7 7m0-7l-7 7`
-    addSVGElement(inputGroup, 'path', { d });
+    const d = `M${px - 3} ${py - 3}l7 7m0-7l-7 7`;
+    if (points[x]) {
+      points[x].setAttribute('d', d);
+    } else {
+      points[x] = addSVGElement(inputGroup, 'path', { d });
+    }
   }
 
   // Spline line
@@ -402,6 +407,7 @@ function createNoteInput(id, addPoint) {
       .attr({ contenteditable: true })
       .addEventListener('blur', (evt) => {
         const value = parseFloat(evt.target.innerText);
+
         addPoint(i, value);
       });
     
