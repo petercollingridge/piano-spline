@@ -270,6 +270,7 @@ function createChart(id) {
   const splineLine = addSVGElement(svg, 'path', { class: 'spline' });
 
   // Create draggable points
+  let selectedIndex = false;
   let selectedPoint = false;
   let selectedSplinePoint = false;
   let offsetX;
@@ -277,7 +278,7 @@ function createChart(id) {
   
   const splineGroup = addSVGElement(svg, 'g', { class: 'spline-points' });
 
-  const splinePoints = SPLINE_POINTS.map((p, index) => {
+  SPLINE_POINTS.forEach((p, index) => {
     const x = getX(p[0]);
     const y = getY(p[1]);
 
@@ -293,6 +294,15 @@ function createChart(id) {
     });
 
     draggablePoint.addEventListener('mousedown', (evt) => {
+      if (index === 0 || index === 4) {
+        dragBoundary = false;
+      } else {
+        // Limit horizontal point movement to between its neighbours
+        dragBoundary = [
+          SPLINE_POINTS[index - 1][0] + 3,
+          SPLINE_POINTS[index + 1][0] - 3,
+        ];
+      }
       selectedPoint = draggablePoint;
       selectedSplinePoint = SPLINE_POINTS[index];
       offsetX = draggablePoint.getAttribute('cx') - evt.offsetX;
@@ -330,13 +340,29 @@ function createChart(id) {
   svg.addEventListener('mousemove', (evt) => {
     if (selectedPoint) {
       // Move spline point when dragged
-      const px = evt.offsetX + offsetX;
-      const py = evt.offsetY + offsetY;
-      selectedPoint.setAttribute('cx', px);
-      selectedPoint.setAttribute('cy', py);
+      if (dragBoundary) {
+        let px = evt.offsetX + offsetX;
 
-      // Update value of spline point
-      selectedSplinePoint[0] = px;
+        if (px < dragBoundary[0]) {
+          px = dragBoundary[0];
+        } else if (px > dragBoundary[1]) {
+          px = dragBoundary[1];
+        }
+        selectedPoint.setAttribute('cx', px);
+        selectedSplinePoint[0] = px;
+
+      }
+
+      let py = evt.offsetY + offsetY;
+
+      // Limit vertical movement to chart top and bottom
+      if (py < y1) {
+        py = y1;
+      } else if (py > y2) {
+        py = y2;
+      }
+
+      selectedPoint.setAttribute('cy', py);
       selectedSplinePoint[1] = py;
 
       // Update spline
