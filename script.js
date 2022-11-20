@@ -175,7 +175,7 @@ function getBezierControlPoints(p0, p1, p2, p3) {
   const c2 = (t1 - t0) / ((t2 - t0) * (t2 - t1));
   const d1 = (t3 - t2) / ((t3 - t1) * (t2 - t1));
   const d2 = (t2 - t1) / ((t3 - t1) * (t3 - t2));
-  
+
   return [
     [
       p1[0] + dt * (c1 * (p1[0] - p0[0]) + c2 * (p2[0] - p1[0])) / 3,
@@ -186,6 +186,19 @@ function getBezierControlPoints(p0, p1, p2, p3) {
     ]
   ];
 };
+
+function getPointOnBezier(p0, p1, p2, p3, t) {
+  const s = 1 - t;
+  const a = s * s * s;
+  const b = s * s * t * 3;
+  const c = s * t * t * 3;
+  const d = t * t * t;
+
+  return [
+    a * p0[0] + b * p1[0] + c * p2[0] + d * p3[0],
+    a * p0[1] + b * p1[1] + c * p2[1] + d * p3[1]
+  ];
+}
 
 function createChart(id) {
   const GRID_X = 30;
@@ -218,6 +231,9 @@ function createChart(id) {
   const getX = x => x1 + x * GRID_X * 0.2;
   // Convert y-coordinate (strike weight) into a y-position on the SVG
   const getY = y => y1 + (16 - y) * GRID_Y;
+
+  // Convert an x-position on the SVG into a note value
+  const getNote = x => (x - x1) * 5 / GRID_X;
 
   const svg = document.getElementById(id);
   svg.setAttributeNS(null, 'width', width);
@@ -333,6 +349,7 @@ function createChart(id) {
 
     for (let i = 1; i <5; i++) {
       const [c1, c2] = getBezierControlPoints(p[i - 1], p[i], p[i + 1], p[i + 2]);
+      const bp = getPointOnBezier(p[i], c1, c2, p[i + 1], 0.5);
       d += `C${c1[0]} ${c1[1]} ${c2[0]} ${c2[1]} ${p[i + 1][0]} ${p[i + 1][1]}`
     }
 
