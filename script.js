@@ -187,7 +187,7 @@ function getBezierControlPoints(p0, p1, p2, p3) {
   ];
 };
 
-function getPointOnBezier(p0, p1, p2, p3, t) {
+function getPointOnBezier(t, p0, p1, p2, p3) {
   const s = 1 - t;
   const a = s * s * s;
   const b = s * s * t * 3;
@@ -200,13 +200,57 @@ function getPointOnBezier(p0, p1, p2, p3, t) {
   ];
 }
 
+// Given an x-value find the y value for a point on a bezier curve
+function findValueOnBezier(x, p0, p1, p2, p3) {
+  let t = 0.5;
+  let step = 0.5;
+  let p = getPointOnBezier(t, p0, p1, p2, p3);
+
+  let count = 0;
+  // Keep trying until we get close to the x value
+  while (Math.abs(p[0] - x) > 0.1) {
+    if (count++ > 12) { break; }
+
+    step *= 0.5;
+    if (x < p[0]) {
+      t -= step;
+    } else {
+      t += step;
+    }
+    p = getPointOnBezier(t, p0, p1, p2, p3);
+  }
+
+  // Return y value for this point
+  return p[1];
+} 
+
+// Given an x-value find the y value for a point on a spline consisting of multiple bezier curves
+function findValueOnMultiBezier(x, bezierPoints) {
+  // Get spline section where x lies
+  for (let i = 0; i < 5; i++) {
+    const bezierPoint = bezierPoints[i * 4];
+    if (Math.abs(x - bezierPoint[0]) < 0.1) {
+      return bezierPoint[1]
+    } else if (x < bezierPoint[0]) {
+      return findValueOnBezier(
+        x,
+        bezierPoints[i * 4 - 4],
+        bezierPoints[i * 4 - 3],
+        bezierPoints[i * 4 - 2],
+        bezierPoints[i * 4 - 1],
+      );
+    }
+  }
+}
+
 function createChart(id) {
   const GRID_X = 30;
   const GRID_Y = 30;
   const TICK_SIZE = 4;
   const points = {};
 
-  const SPLINE_POINTS = [
+  let allSpinePoints = [];
+  const splinePoints = [
     [1, 11.5],
     [22, 11.1],
     [44, 10.21],
@@ -229,11 +273,14 @@ function createChart(id) {
 
   // Convert x-coordinate (note) into an x-position on the SVG
   const getX = x => x1 + x * GRID_X * 0.2;
-  // Convert y-coordinate (strike weight) into a y-position on the SVG
-  const getY = y => y1 + (16 - y) * GRID_Y;
 
   // Convert an x-position on the SVG into a note value
   const getNote = x => (x - x1) * 5 / GRID_X;
+
+  // Convert y-coordinate (strike weight) into a y-position on the SVG
+  const getY = y => y1 + (16 - y) * GRID_Y;
+
+  const getStrikeWeight = y => 16 - (y - y1) / GRID_Y;
 
   const svg = document.getElementById(id);
   svg.setAttributeNS(null, 'width', width);
@@ -299,7 +346,7 @@ function createChart(id) {
   
   const splineGroup = addSVGElement(svg, 'g', { class: 'spline-points' });
 
-  SPLINE_POINTS.forEach((p, index) => {
+  splinePoints.forEach((p, index) => {
     const x = getX(p[0]);
     const y = getY(p[1]);
 
@@ -320,12 +367,12 @@ function createChart(id) {
       } else {
         // Limit horizontal point movement to between its neighbours
         dragBoundary = [
-          SPLINE_POINTS[index - 1][0] + GRID_X,
-          SPLINE_POINTS[index + 1][0] - GRID_X,
+          splinePoints[index - 1][0] + GRID_X,
+          splinePoints[index + 1][0] - GRID_X,
         ];
       }
       selectedPoint = draggablePoint;
-      selectedSplinePoint = SPLINE_POINTS[index];
+      selectedSplinePoint = splinePoints[index];
       offsetX = draggablePoint.getAttribute('cx') - evt.offsetX;
       offsetY = draggablePoint.getAttribute('cy') - evt.offsetY;
     });
@@ -336,21 +383,31 @@ function createChart(id) {
   // Update spline line
   function updateSpline() {
     // Project back to find inferred control points
-    const p1 = SPLINE_POINTS[0];
-    const p2 = SPLINE_POINTS[1];
-    const p3 = SPLINE_POINTS[2];
-    const p4 = SPLINE_POINTS[3];
-    const p5 = SPLINE_POINTS[4];
+    const p1 = splinePoints[0];
+    const p2 = splinePoints[1];
+    const p3 = splinePoints[2];
+    const p4 = splinePoints[3];
+    const p5 = splinePoints[4];
     const p0 = [2 * p1[0] - p2[0], 2 * p1[1] - p2[1]];
     const p6 = [2 * p5[0] - p4[0], 2 * p5[1] - p4[1]];
     const p = [p0, p1, p2, p3, p4, p5, p6];
 
+    allSpinePoints = [p1];
     let d = `M${p1[0]} ${p1[1]}`;
 
+    // Calculate control points for multi-bezier spline
     for (let i = 1; i <5; i++) {
       const [c1, c2] = getBezierControlPoints(p[i - 1], p[i], p[i + 1], p[i + 2]);
-      const bp = getPointOnBezier(p[i], c1, c2, p[i + 1], 0.5);
+      allSpinePoints = allSpinePoints.concat([c1, c2, p[i + 1]]);
       d += `C${c1[0]} ${c1[1]} ${c2[0]} ${c2[1]} ${p[i + 1][0]} ${p[i + 1][1]}`
+    }
+
+    // Calculate values along bezier multi-bezier spline
+    for (let note = 1; note <= 88; note++) {
+      const x = getX(note);
+      const y = findValueOnMultiBezier(x, allSpinePoints);
+      const strikeWeight = getStrikeWeight(y);
+      console.log(note, strikeWeight);
     }
 
     return d;
