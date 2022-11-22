@@ -247,9 +247,7 @@ function createChart(id) {
   const GRID_X = 30;
   const GRID_Y = 30;
   const TICK_SIZE = 4;
-  const points = {};
 
-  let allSpinePoints = [];
   const splinePoints = [
     [1, 11.5],
     [22, 11.1],
@@ -322,18 +320,6 @@ function createChart(id) {
   // Adding measured points
   const inputGroup = addSVGElement(svg, 'g', { class: 'input-points' });
 
-  function addPoint(x, y) {
-    const px = getX(x);
-    const py = getY(y);
-    const d = `M${px - 3} ${py - 3}l7 7m0-7l-7 7`;
-
-    if (points[x]) {
-      points[x].setAttribute('d', d);
-    } else {
-      points[x] = addSVGElement(inputGroup, 'path', { d });
-    }
-  }
-
   // Spline line
   const splineLine = addSVGElement(svg, 'path', { class: 'spline' });
 
@@ -380,6 +366,8 @@ function createChart(id) {
     return draggablePoint;
   });
 
+  const output = { update: () => {} };
+
   // Update spline line
   function updateSpline() {
     // Project back to find inferred control points
@@ -392,7 +380,7 @@ function createChart(id) {
     const p6 = [2 * p5[0] - p4[0], 2 * p5[1] - p4[1]];
     const p = [p0, p1, p2, p3, p4, p5, p6];
 
-    allSpinePoints = [p1];
+    let allSpinePoints = [p1];
     let d = `M${p1[0]} ${p1[1]}`;
 
     // Calculate control points for multi-bezier spline
@@ -407,7 +395,7 @@ function createChart(id) {
       const x = getX(note);
       const y = findValueOnMultiBezier(x, allSpinePoints);
       const strikeWeight = getStrikeWeight(y);
-      console.log(note, strikeWeight);
+      output.update(note, strikeWeight);
     }
 
     return d;
@@ -453,10 +441,10 @@ function createChart(id) {
     selectedPoint = false;
   });
 
-  return addPoint;
+  return { getX, getY, inputGroup, output, updateSpline };
 }
 
-function createNoteInput(id, addPoint) {
+function createNoteInput(id) {
   const container = document.getElementById(id);
   const table = createElement('table').addClass('spline-table');
   container.appendChild(table.element);
@@ -469,25 +457,69 @@ function createNoteInput(id, addPoint) {
 
   const tBody = table.addElement('tbody');
 
+  const swInputs = [];
+  const swOutputs = [];
+
   for (let i = 1; i <= 88; i++) {
     // Get sample value
     const value = sampleData[i - 1][1];
 
-    const tBodyRow = tHead.addElement('tr');
+    const tBodyRow = tBody.addElement('tr');
     tBodyRow.addElement('td').text(i);
-    tBodyRow.addElement('td')
+
+    const input = createElement('td')
       .text(value)
       .addClass('editable')
       .attr({ contenteditable: true })
-      .addEventListener('blur', (evt) => {
-        const value = parseFloat(evt.target.innerText);
-
-        addPoint(i, value);
-      });
+      .addTo(tBodyRow);
+    swInputs.push(input);
     
-    addPoint(i, value);
+    const output = createElement('td').text('-').addTo(tBodyRow);
+    swOutputs.push(output);
+  }
+
+  return [swInputs, swOutputs];
+}
+
+// Add crosses on the chart to indicate where measured points are
+// Update when inputs are updated
+function addMarkedPoints(inputs, inputGroup, getX, getY) {
+  const points = {};
+
+  function addPoint(x, y) {
+    const px = getX(x);
+    const py = getY(y);
+    const d = `M${px - 3} ${py - 3}l7 7m0-7l-7 7`;
+
+    if (points[x]) {
+      points[x].setAttribute('d', d);
+    } else {
+      points[x] = addSVGElement(inputGroup, 'path', { d });
+    }
+  }
+
+  for (let i = 0; i < inputs.length; i++) {
+    const value = sampleData[i][1];
+
+    inputs[i].addEventListener('blur', (evt) => {
+      const value = parseFloat(evt.target.innerText);
+      addPoint(i, value);
+    });
+
+    addPoint(i + 1, value);
+  }
+
+}
+
+function insertOutputFunc(output, outputComponents) {
+  output.update = (note, strikeWeight) => {
+    outputComponents[note - 1].text(strikeWeight.toFixed(1));
   }
 }
 
-const addPoint = createChart('spline-chart');
-createNoteInput('note-wrapper', addPoint);
+const { getX, getY, inputGroup, output, updateSpline } = createChart('spline-chart');
+const [swInputs, swOutputs] = createNoteInput('note-wrapper');
+
+addMarkedPoints(swInputs, inputGroup, getX, getY);
+insertOutputFunc(output, swOutputs);
+updateSpline();
